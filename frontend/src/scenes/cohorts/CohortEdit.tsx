@@ -203,16 +203,36 @@ export function CohortEdit({ id }: CohortLogicProps): JSX.Element {
                                             )}
                                         </p>
 
+                                        
                                         {cohort.errors_calculating ? (
-                                            <Tooltip
-                                                title={
-                                                    "The last attempted calculation failed. This means your current cohort data can be stale. This doesn't affect feature flag evaluation."
-                                                }
-                                            >
-                                                <div className="text-danger">
-                                                    <IconErrorOutline className="text-danger text-xl shrink-0" />
+                                            <div className="bg-danger-highlight border border-danger rounded p-2 mt-2">
+                                                <div className="flex items-start gap-2">
+                                                    <IconErrorOutline className="text-danger text-xl shrink-0 mt-0.5" />
+                                                    <div>
+                                                        <div className="font-semibold text-danger">
+                                                            Calculation failed
+                                                        </div>
+                                                        <div className="text-sm text-muted-alt mt-1">
+                                                            The last attempted calculation failed. This means your current cohort data can be stale.
+                                                        </div>
+                                                        {/* Show detailed error message if available */}
+                                                        {cohort.last_error_message && (
+                                                            <div className="text-sm mt-2 p-2 bg-bg-light rounded border">
+                                                                <strong>Error details:</strong>
+                                                                <div className="font-mono text-xs mt-1 whitespace-pre-wrap">
+                                                                    {cohort.last_error_message}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        {/* Show when the error occurred if available*/}
+                                                        {cohort.last_error_at && (
+                                                            <div className="text-xs text-muted-alt mt-1">
+                                                                Last failed: <TZLabel time={cohort.last_error_at} />
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </Tooltip>
+                                            </div>
                                         ) : null}
                                     </div>
                                 )}

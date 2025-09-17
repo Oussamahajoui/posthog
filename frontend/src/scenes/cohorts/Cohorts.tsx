@@ -20,6 +20,9 @@ import { cohortsSceneLogic } from 'scenes/cohorts/cohortsSceneLogic'
 import { PersonsManagementSceneTabs } from 'scenes/persons-management/PersonsManagementSceneTabs'
 import { SceneExport } from 'scenes/sceneTypes'
 import { urls } from 'scenes/urls'
+import { IconErrorOutline, IconInfo } from '@posthog/icons'
+import { Tooltip } from '@posthog/lemon-ui'
+import { TZLabel } from 'lib/components/TZLabel'
 
 import { SceneContent } from '~/layout/scenes/components/SceneContent'
 import { SceneDivider } from '~/layout/scenes/components/SceneDivider'
@@ -76,14 +79,50 @@ export function Cohorts(): JSX.Element {
                 if (cohort.is_static) {
                     return <>N/A</>
                 }
-                return cohort.is_calculating ? (
-                    <span className="flex items-center">
-                        in progress <Spinner className="ml-2" />
-                    </span>
-                ) : (
-                    dayjs(cohort.last_calculation).fromNow()
+                return (
+                    <div>
+                        {cohort.is_calculating ? (
+                            <span className="flex items-center">
+                                in progress <Spinner className="ml-2" />
+                            </span>
+                        ) : cohort.last_calculation ? (
+                            <TZLabel time={cohort.last_calculation} />
+                        ) : (
+                            'Never'
+                        )}
+                        {/* Error indicator with tooltip */}
+                        {cohort.errors_calculating && cohort.errors_calculating > 0 && (
+                            <div className="flex items-center gap-1 mt-1">
+                                <IconErrorOutline className="text-danger text-sm" />
+                                <span className="text-danger text-xs">
+                                    Failed ({cohort.errors_calculating} error{cohort.errors_calculating !== 1 ? 's' : ''})
+                                </span>
+                                {cohort.last_error_message && (
+                                    <Tooltip
+                                        title={
+                                            <div>
+                                                <div className="font-semibold">Error details:</div>
+                                                <div className="font-mono text-xs mt-1 max-w-sm">
+                                                    {cohort.last_error_message}
+                                                </div>
+                                                {cohort.last_error_at && (
+                                                    <div className="text-xs mt-1 opacity-75">
+                                                        Failed: <TZLabel time={cohort.last_error_at} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        }
+                                    >
+                                        <IconInfo className="text-muted-alt text-sm cursor-help" />
+                                    </Tooltip>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 )
             },
+            dataIndex: 'last_calculation',
+            sorter: (a, b) => (new Date(a.last_calculation || 0).getTime()) - (new Date(b.last_calculation || 0).getTime()),
         },
         {
             width: 0,

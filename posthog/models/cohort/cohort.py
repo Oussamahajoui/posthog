@@ -168,6 +168,7 @@ class Cohort(FileSystemSyncMixin, RootTeamMixin, models.Model):
     last_calculation = models.DateTimeField(blank=True, null=True)
     errors_calculating = models.IntegerField(default=0)
     last_error_at = models.DateTimeField(blank=True, null=True)
+    last_error_message = models.TextField(blank=True, null=True) 
 
     is_static = models.BooleanField(default=False)
 
@@ -296,15 +297,18 @@ class Cohort(FileSystemSyncMixin, RootTeamMixin, models.Model):
             self.last_calculation = timezone.now()
             self.errors_calculating = 0
             self.last_error_at = None
-        except Exception:
+            self.last_error_message = None
+        except Exception as e:
             self.errors_calculating = F("errors_calculating") + 1
             self.last_error_at = timezone.now()
+            self.last_error_message = str(e)
 
             logger.warning(
                 "cohort_calculation_failed",
                 id=self.pk,
                 current_version=self.version,
                 new_version=pending_version,
+                error_message = str(e),
                 exc_info=True,
             )
 
@@ -563,13 +567,18 @@ class Cohort(FileSystemSyncMixin, RootTeamMixin, models.Model):
             self.save()
         except Exception as save_err:
             logger.exception("Failed to save cohort state", cohort_id=self.id, team_id=team_id)
-            capture_exception(save_err, additional_properties={"cohort_id": self.id, "team_id": team_id})
-
-            # Single retry for transient issues
+            # Try to save just the critical fields to prevent stuck cohorts
             try:
-                self.save()
+                self.save(update_fields=["is_calculating", "errors_calculating", "last_error_at", "last_error_message"])
             except Exception:
-                logger.exception("Failed to save cohort state on retry", cohort_id=self.id, team_id=team_id)
+                logger.exception("Failed to save even critical cohort fields", cohort_id=self.id, team_id=team_id)
+            
+            # capture_exception(save_err, additional_properties={"cohort_id": self.id, "team_id": team_id})
+            # # Single retry for transient issues
+            # try:
+            #     self.save()
+            # except Exception:
+            #     logger.exception("Failed to save cohort state on retry", cohort_id=self.id, team_id=team_id)
                 # If both attempts fail, the cohort may remain in an inconsistent state
 
     __repr__ = sane_repr("id", "name", "last_calculation")

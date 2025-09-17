@@ -4,30 +4,27 @@ from collections.abc import Iterator
 from datetime import datetime
 from typing import Annotated, Any, Literal, Optional, Union, cast
 
+import structlog
 from django.conf import settings
 from django.db import DatabaseError
-from django.db.models import OuterRef, Prefetch, QuerySet, Subquery, prefetch_related_objects
-
-import structlog
+from django.db.models import (
+    OuterRef,
+    Prefetch,
+    QuerySet,
+    Subquery,
+    prefetch_related_objects,
+)
 from loginas.utils import is_impersonated_session
 from prometheus_client import Counter
-from pydantic import (
-    BaseModel,
-    Field,
-    ValidationError as PydanticValidationError,
-    model_validator,
-)
+from pydantic import BaseModel, Field
+from pydantic import ValidationError as PydanticValidationError
+from pydantic import model_validator
 from rest_framework import request, serializers, status, viewsets
 from rest_framework.exceptions import ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.settings import api_settings
 from rest_framework_csv import renderers as csvrenderers
-
-from posthog.schema import ActorsQuery, HogQLQuery
-
-from posthog.hogql.constants import CSV_EXPORT_LIMIT
-from posthog.hogql.context import HogQLContext
 
 from posthog.api.forbid_destroy_model import ForbidDestroyModel
 from posthog.api.insight import capture_legacy_api_call
@@ -47,6 +44,8 @@ from posthog.constants import (
 )
 from posthog.event_usage import report_user_action
 from posthog.exceptions_capture import capture_exception
+from posthog.hogql.constants import CSV_EXPORT_LIMIT
+from posthog.hogql.context import HogQLContext
 from posthog.metrics import LABEL_TEAM_ID
 from posthog.models import Cohort, FeatureFlag, Person, User
 from posthog.models.activity_logging.activity_log import (
@@ -70,7 +69,10 @@ from posthog.models.filters.filter import Filter
 from posthog.models.filters.lifecycle_filter import LifecycleFilter
 from posthog.models.filters.stickiness_filter import StickinessFilter
 from posthog.models.person.person import READ_DB_FOR_PERSONS, PersonDistinctId
-from posthog.models.person.sql import INSERT_COHORT_ALL_PEOPLE_THROUGH_PERSON_ID, PERSON_STATIC_COHORT_TABLE
+from posthog.models.person.sql import (
+    INSERT_COHORT_ALL_PEOPLE_THROUGH_PERSON_ID,
+    PERSON_STATIC_COHORT_TABLE,
+)
 from posthog.models.property.property import Property, PropertyGroup
 from posthog.models.team.team import Team
 from posthog.models.utils import UUIDT
@@ -82,6 +84,7 @@ from posthog.queries.trends.lifecycle_actors import LifecycleActors
 from posthog.queries.trends.trends_actors import TrendsActors
 from posthog.queries.util import get_earliest_timestamp
 from posthog.renderers import SafeJSONRenderer
+from posthog.schema import ActorsQuery, HogQLQuery
 from posthog.tasks.calculate_cohort import (
     calculate_cohort_from_list,
     increment_version_and_enqueue_calculate_cohort,
@@ -231,6 +234,7 @@ class CohortSerializer(serializers.ModelSerializer):
             "cohort_type",
             "experiment_set",
             "_create_in_folder",
+            "last_error_message",
         ]
         read_only_fields = [
             "id",
@@ -241,6 +245,7 @@ class CohortSerializer(serializers.ModelSerializer):
             "errors_calculating",
             "count",
             "experiment_set",
+            "last_error_message",
         ]
 
     def validate_cohort_type(self, value):
